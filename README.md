@@ -15,4 +15,4 @@ para manutenção da vegetação nas rodovias.
 
 Assista à demonstração da Sprint 4:
 
-[▶ Assistir ao vídeo no YouTube]()
+[▶ Assistir ao vídeo no YouTube](https://youtu.be/3bxqRsZbEW0)
