@@ -13,13 +13,15 @@ const localidades = [
   { nome: "Limeira, SP, Brasil", alturaVegetacao: 64 }
 ];
 
-// Faixas usadas para classificar a altura da vegetação e recomendar uma ação.
+// Fonte única das faixas, classificações, prioridades e ações recomendadas.
 const faixasVegetacao = [
   {
     min: 0,
     max: 20,
     classificacao: "Normal",
     acao: "Nenhuma intervenção necessária.",
+    prioridade: "Baixa",
+    ordemPrioridade: 4,
     classe: "status-normal"
   },
   {
@@ -27,6 +29,8 @@ const faixasVegetacao = [
     max: 35,
     classificacao: "Atenção",
     acao: "Manter acompanhamento do ponto.",
+    prioridade: "Moderada",
+    ordemPrioridade: 3,
     classe: "status-atencao"
   },
   {
@@ -34,6 +38,8 @@ const faixasVegetacao = [
     max: 50,
     classificacao: "Risco",
     acao: "Programar intervenção da equipe.",
+    prioridade: "Alta",
+    ordemPrioridade: 2,
     classe: "status-risco"
   },
   {
@@ -41,6 +47,8 @@ const faixasVegetacao = [
     max: null,
     classificacao: "Crítico",
     acao: "Realizar intervenção imediata.",
+    prioridade: "Imediata",
+    ordemPrioridade: 1,
     classe: "status-critico"
   }
 ];
@@ -51,17 +59,31 @@ const faixasVegetacao = [
 const botao = document.getElementById("botaoBuscar");
 const cards = document.getElementById("cards");
 const mensagem = document.getElementById("mensagem");
+const resumoMonitoramento = document.getElementById("resumoMonitoramento");
+const totalPontos = document.getElementById("totalPontos");
+const totalPrioridadeAlta = document.getElementById("totalPrioridadeAlta");
+const totalAtencao = document.getElementById("totalAtencao");
+const totalNormal = document.getElementById("totalNormal");
+const controleOrdenacao = document.getElementById("controleOrdenacao");
+const ordenacaoCards = document.getElementById("ordenacaoCards");
+
+let pontosProcessados = [];
 
 
 // Quando o botão for clicado, a função é executada
 
 botao.addEventListener("click", buscarDados);
+ordenacaoCards.addEventListener("change", atualizarOrdenacao);
 
 
 // Função principal
 
 async function buscarDados() {
   cards.innerHTML = "";
+  pontosProcessados = [];
+  limparResumo();
+  controleOrdenacao.hidden = true;
+  ordenacaoCards.disabled = true;
   mensagem.textContent = "Carregando dados...";
   botao.disabled = true;
 
@@ -76,6 +98,7 @@ async function buscarDados() {
     const dados = await buscarLocalidade(localidades[i]);
 
     if (dados) {
+      dados.ordemOriginal = i;
       dadosLocalidades.push(dados);
     } else {
       houveErro = true;
@@ -85,7 +108,15 @@ async function buscarDados() {
     await esperar();
   }
 
-  renderizarLocalidades(dadosLocalidades);
+  pontosProcessados = processarPontos(dadosLocalidades);
+
+  if (pontosProcessados.length > 0) {
+    const resumo = calcularResumo(pontosProcessados);
+    renderizarResumo(resumo);
+    controleOrdenacao.hidden = false;
+    ordenacaoCards.disabled = false;
+    atualizarOrdenacao();
+  }
 
   if (dadosLocalidades.length === 0) {
     mensagem.textContent = "Erro ao carregar os dados. Tente novamente.";
@@ -95,6 +126,88 @@ async function buscarDados() {
     mensagem.textContent = "Dados carregados com sucesso.";
   }
   botao.disabled = false;
+}
+
+// Associa a cada ponto sua classificação, prioridade e ação recomendada.
+function processarPontos(dadosLocalidades) {
+  return dadosLocalidades.map(function (dados) {
+    const regra = classificarVegetacao(dados.alturaVegetacao);
+
+    if (!regra) {
+      return null;
+    }
+
+    return {
+      ...dados,
+      classificacao: regra.classificacao,
+      acao: regra.acao,
+      prioridade: regra.prioridade,
+      ordemPrioridade: regra.ordemPrioridade,
+      classe: regra.classe
+    };
+  }).filter(function (ponto) {
+    return ponto !== null;
+  });
+}
+
+// Calcula os indicadores usando somente os pontos processados.
+function calcularResumo(pontos) {
+  const resumo = {
+    total: pontos.length,
+    prioridadeAlta: 0,
+    atencao: 0,
+    normal: 0
+  };
+
+  pontos.forEach(function (ponto) {
+    if (ponto.classificacao === "Risco" || ponto.classificacao === "Crítico") {
+      resumo.prioridadeAlta++;
+    } else if (ponto.classificacao === "Atenção") {
+      resumo.atencao++;
+    } else if (ponto.classificacao === "Normal") {
+      resumo.normal++;
+    }
+  });
+
+  return resumo;
+}
+
+function renderizarResumo(resumo) {
+  totalPontos.textContent = resumo.total;
+  totalPrioridadeAlta.textContent = resumo.prioridadeAlta;
+  totalAtencao.textContent = resumo.atencao;
+  totalNormal.textContent = resumo.normal;
+  resumoMonitoramento.hidden = false;
+}
+
+function limparResumo() {
+  totalPontos.textContent = "";
+  totalPrioridadeAlta.textContent = "";
+  totalAtencao.textContent = "";
+  totalNormal.textContent = "";
+  resumoMonitoramento.hidden = true;
+}
+
+// Cria uma cópia antes de ordenar para preservar a ordem do array processado.
+function ordenarPontos(pontos, criterio) {
+  const pontosOrdenados = pontos.slice();
+
+  if (criterio === "original") {
+    return pontosOrdenados.sort(function (pontoA, pontoB) {
+      return pontoA.ordemOriginal - pontoB.ordemOriginal;
+    });
+  }
+
+  return pontosOrdenados.sort(function (pontoA, pontoB) {
+    return pontoA.ordemPrioridade - pontoB.ordemPrioridade
+      || pontoB.alturaVegetacao - pontoA.alturaVegetacao
+      || pontoA.ordemOriginal - pontoB.ordemOriginal;
+  });
+}
+
+function atualizarOrdenacao() {
+  const pontosOrdenados = ordenarPontos(pontosProcessados, ordenacaoCards.value);
+  renderizarLocalidades(pontosOrdenados);
 }
 
 
@@ -195,6 +308,8 @@ function classificarVegetacao(altura) {
 
 // Percorre os resultados e cria os cards dinamicamente.
 function renderizarLocalidades(dadosLocalidades) {
+  cards.innerHTML = "";
+
   dadosLocalidades.forEach(function (dados) {
     criarCard(dados);
   });
@@ -203,15 +318,8 @@ function renderizarLocalidades(dadosLocalidades) {
 // Cria um card para cada localidade
 
 function criarCard(dados) {
-  const classificacao = classificarVegetacao(dados.alturaVegetacao);
-
-  if (!classificacao) {
-    console.log("Altura de vegetação inválida para " + dados.nome);
-    return;
-  }
-
   const card = document.createElement("article");
-  card.classList.add("card", classificacao.classe);
+  card.classList.add("card", dados.classe);
 
   card.innerHTML = `
     <span class="localizacao-rotulo">Localização</span>
@@ -219,18 +327,25 @@ function criarCard(dados) {
 
     <div class="vegetacao-resumo">
       <div class="vegetacao-altura">
-        <span>Altura da vegetação</span>
+        <span>Altura da vegetação (simulada)</span>
         <strong>${dados.alturaVegetacao} cm</strong>
       </div>
 
       <div class="status-grupo">
-        <span class="status-rotulo">Classificação</span>
-        <span class="status-badge">${classificacao.classificacao}</span>
+        <div class="status-item">
+          <span class="status-rotulo">Classificação</span>
+          <span class="status-badge">${dados.classificacao}</span>
+        </div>
+
+        <div class="prioridade-grupo">
+          <span class="status-rotulo">Prioridade de atendimento</span>
+          <strong>${dados.prioridade}</strong>
+        </div>
       </div>
 
       <p class="acao-recomendada">
         <strong>Ação recomendada:</strong>
-        ${classificacao.acao}
+        ${dados.acao}
       </p>
     </div>
 

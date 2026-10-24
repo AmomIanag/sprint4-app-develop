@@ -36,8 +36,44 @@
       </p>
     </section>
 
-    <section>
-      <h2>Localidades monitoradas</h2>
+    <section id="resumoMonitoramento" class="resumo-monitoramento" aria-labelledby="tituloResumo" aria-live="polite" hidden>
+      <h2 id="tituloResumo">Visão geral do monitoramento</h2>
+
+      <div class="indicadores">
+        <article class="indicador indicador-total">
+          <span>Pontos monitorados</span>
+          <strong id="totalPontos"></strong>
+        </article>
+
+        <article class="indicador indicador-prioridade">
+          <span>Prioridade alta</span>
+          <strong id="totalPrioridadeAlta"></strong>
+        </article>
+
+        <article class="indicador indicador-atencao">
+          <span>Em atenção</span>
+          <strong id="totalAtencao"></strong>
+        </article>
+
+        <article class="indicador indicador-normal">
+          <span>Situação normal</span>
+          <strong id="totalNormal"></strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="localidades-secao" aria-labelledby="tituloLocalidades">
+      <div class="secao-cabecalho">
+        <h2 id="tituloLocalidades">Localidades monitoradas</h2>
+
+        <div id="controleOrdenacao" class="controle-ordenacao" hidden>
+          <label for="ordenacaoCards">Ordenar por</label>
+          <select id="ordenacaoCards" disabled>
+            <option value="prioridade" selected>Maior prioridade primeiro</option>
+            <option value="original">Ordem original</option>
+          </select>
+        </div>
+      </div>
 
       <div id="cards">
         <!-- cards que vao ser criados pelo js -->
